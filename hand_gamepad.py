@@ -4,8 +4,12 @@ import platform
 import math
 
 target_OS = platform.system()
+
 if target_OS == "Windows":
+	import vgamepad as vg
+	device = vg.VX360Gamepad()
 	print("SO: Windows")
+
 elif target_OS == "Linux":
 	import evdev
 	import uinput
@@ -29,6 +33,7 @@ elif target_OS == "Linux":
 		uinput.ABS_RX + (0, 255, 0, 0),  # X axis of right joystick
 		uinput.ABS_RY + (0, 255, 0, 0)   # X axis of right joystick
 	])
+
 	device.emit(uinput.BTN_A, 1)
 	print("SO: Linux")
 
@@ -63,7 +68,7 @@ def check_is_hand_open(hand_landmarks):
 	
 	# Check if hand is open or close based on the distances
 	average_distance = sum(distances) / len(distances)
-	print(f'Average distance: {average_distance}')
+	# print(f'Average distance: {average_distance}')
 	return average_distance > 0.1  # 0.05 is the closing reference value
 
 
@@ -98,7 +103,28 @@ def set_controller_input_linux(device, input_data_left, input_data_right):
 	device.emit(uinput.BTN_TL, int(not input_data_right["is_hand_open"]))
 
 
-def get_input_from_frame(frame):
+def set_controller_input_windows(device, input_data_left, input_data_right):
+	if not input_data_left["is_hand_open"]:
+		device.left_trigger(255)
+	else:
+		device.left_trigger(0)
+
+	if not input_data_right["is_hand_open"]:
+		device.right_trigger(255)
+	else:
+		device.right_trigger(0)
+
+	device.left_joystick(x_value=input_data_left["joystick_x"], y_value=input_data_left["joystick_y"])
+	device.right_joystick(x_value=input_data_right["joystick_x"], y_value=input_data_right["joystick_y"])
+	device.update()
+	
+def set_controller_input(target_OS, device, input_data_left, input_data_right):
+	if target_OS == "Windows":
+		set_controller_input_windows(device, input_data_left, input_data_right)
+	elif target_OS == "Linux":
+		set_controller_input_linux(device, input_data_left, input_data_right)
+
+def get_input_from_frame(frame, target_OS):
 	# Constants
 	MIDDLE_FINGER_KNUCKLE_INDEX = 9 
 	HAND_BOTTOM_INDEX = 0
@@ -135,9 +161,12 @@ def get_input_from_frame(frame):
 			cv2.line(frame, frame_center_coords, hand_center_coords, (255, 0, 0), 2)
 
 			# Get hand joystick data
+			joystick_max = 255 if target_OS == "Linux" else 32767
+			joystick_min = 0 if target_OS == "Linux" else -32767
+			
 			joystick_input = {
-				"x": int(linear_scaling(hand_center_coords[0] - frame_center_coords[0], -frame_w//4, frame_w//4, 0, 255)),
-				"y": int(linear_scaling(hand_center_coords[1] - frame_center_coords[1], -frame_h//5, frame_h//5, 0, 255))
+				"x": int(linear_scaling(hand_center_coords[0] - frame_center_coords[0], -frame_w//3, frame_w//3, joystick_min, joystick_max)),
+				"y": int(linear_scaling(hand_center_coords[1] - frame_center_coords[1], -frame_h//3, frame_h//3, joystick_min, joystick_max))
 			}
 
 
@@ -152,15 +181,18 @@ def get_input_from_frame(frame):
 			# print(f'Middle finger {middle_finger_knuckle_coords}')
 			# print(f'Hand bottom {hand_bottom_coords}')
 			# print(f'Hand center {hand_center_coords}')
-			# print(f'Joystick: x = {joystick_input["x"]}, y = {joystick_input["y"]}')
-			# print(f'Is Hand open?: {is_hand_open}')
+			print(f'Joystick: x = {joystick_input["x"]}, y = {joystick_input["y"]}')
+			print(f'Is Hand open?: {is_hand_open}')
 			return input_data
 
 	else: # No hands were detected
+		joystick_x = 128 if target_OS == "Linux" else 0
+		joystick_y = 128 if target_OS == "Linux" else 0
+
 		input_data = {
 				"is_hand_open": 1,
-				"joystick_x": 128,
-				"joystick_y": 128
+				"joystick_x": joystick_x,
+				"joystick_y": joystick_y
 		}
 		
 		return input_data
@@ -178,13 +210,13 @@ while True:
 	right_hand_frame = frame[:, half:]  
 	if not in_pause:
 		# Get input data from both hands
-		left_input = get_input_from_frame(left_hand_frame)
-		right_input = get_input_from_frame(right_hand_frame)
+		left_input = get_input_from_frame(left_hand_frame, target_OS)
+		right_input = get_input_from_frame(right_hand_frame, target_OS)
 		# print(left_input)
 		# print(right_input)
 		
 		# Set input data on virtual controller
-		set_controller_input_linux(device, left_input, right_input) 
+		set_controller_input(target_OS, device, left_input, right_input) 
 	 
 
 	cv2.imshow('Gamehand v0.2', frame)
