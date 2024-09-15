@@ -180,8 +180,8 @@ while True:
 		# Get input data from both hands
 		left_input = get_input_from_frame(left_hand_frame)
 		right_input = get_input_from_frame(right_hand_frame)
-		print(left_input)
-		print(right_input)
+		# print(left_input)
+		# print(right_input)
 		
 		# Set input data on virtual controller
 		set_controller_input_linux(device, left_input, right_input) 
