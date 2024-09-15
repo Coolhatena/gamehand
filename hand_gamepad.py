@@ -68,7 +68,7 @@ def check_is_hand_open(hand_landmarks):
 	
 	# Check if hand is open or close based on the distances
 	average_distance = sum(distances) / len(distances)
-	# print(f'Average distance: {average_distance}')
+	print(f'Average distance: {average_distance}')
 	return average_distance > 0.1  # 0.05 is the closing reference value
 
 
@@ -88,6 +88,14 @@ def calculate_middle_point(pt1, pt2):
 # Transform distance from hand to the center of the image into joystick data
 def linear_scaling(x, minA=-500, maxA=500, minB=0, maxB=255):
 	new_x = (x - minA) / (maxA - minA) * (maxB - minB) + minB
+	
+	# Dont let data go off limits
+	if new_x > maxB:
+		new_x = maxB
+	
+	if new_x < minB:
+		new_x = minB
+
 	return new_x
 
 
@@ -114,8 +122,8 @@ def set_controller_input_windows(device, input_data_left, input_data_right):
 	else:
 		device.right_trigger(0)
 
-	device.left_joystick(x_value=input_data_left["joystick_x"], y_value=input_data_left["joystick_y"])
-	device.right_joystick(x_value=input_data_right["joystick_x"], y_value=input_data_right["joystick_y"])
+	device.left_joystick(x_value=input_data_left["joystick_x"], y_value=input_data_left["joystick_y"]*-1)
+	device.right_joystick(x_value=input_data_right["joystick_x"], y_value=input_data_right["joystick_y"]*-1)
 	device.update()
 	
 def set_controller_input(target_OS, device, input_data_left, input_data_right):
@@ -164,9 +172,11 @@ def get_input_from_frame(frame, target_OS):
 			joystick_max = 255 if target_OS == "Linux" else 32767
 			joystick_min = 0 if target_OS == "Linux" else -32767
 			
+			divider = 5
+
 			joystick_input = {
-				"x": int(linear_scaling(hand_center_coords[0] - frame_center_coords[0], -frame_w//3, frame_w//3, joystick_min, joystick_max)),
-				"y": int(linear_scaling(hand_center_coords[1] - frame_center_coords[1], -frame_h//3, frame_h//3, joystick_min, joystick_max))
+				"x": int(linear_scaling(hand_center_coords[0] - frame_center_coords[0], -frame_w//divider, frame_w//divider, joystick_min, joystick_max)),
+				"y": int(linear_scaling(hand_center_coords[1] - frame_center_coords[1], -frame_h//divider, frame_h//divider, joystick_min, joystick_max))
 			}
 
 
@@ -181,7 +191,7 @@ def get_input_from_frame(frame, target_OS):
 			# print(f'Middle finger {middle_finger_knuckle_coords}')
 			# print(f'Hand bottom {hand_bottom_coords}')
 			# print(f'Hand center {hand_center_coords}')
-			print(f'Joystick: x = {joystick_input["x"]}, y = {joystick_input["y"]}')
+			# print(f'Joystick: x = {joystick_input["x"]}, y = {joystick_input["y"]}')
 			print(f'Is Hand open?: {is_hand_open}')
 			return input_data
 
