@@ -186,7 +186,7 @@ while True:
 		set_controller_input_linux(device, left_input, right_input) 
 	 
 
-	cv2.imshow('Hand Gamepad v0.1', frame)
+	cv2.imshow('Gamehand v0.2', frame)
 
 	key = cv2.waitKey(1)
 	if key == q_unicode:
