@@ -167,6 +167,7 @@ def get_input_from_frame(frame):
 
 
 q_unicode = ord('q')
+p_unicode = ord('p')
 in_pause = False
 while True:
 	_, frame = cam.read()
@@ -189,6 +190,8 @@ while True:
 	cv2.imshow('Gamehand v0.2', frame)
 
 	key = cv2.waitKey(1)
+	if key == p_unicode:
+		in_pause = not in_pause
 	if key == q_unicode:
 		break
 
