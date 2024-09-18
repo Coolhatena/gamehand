@@ -3,6 +3,8 @@ import mediapipe as mp
 import platform
 import math
 
+from helpers import calculate_distance, calculate_middle_point, linear_scaling
+
 target_OS = platform.system()
 
 if target_OS == "Windows":
@@ -47,11 +49,6 @@ camera_index = 0
 cam = cv2.VideoCapture(camera_index)
 
 
-# Get the distance bewteen two points
-def calculate_distance(p1, p2):
-	return math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
-
-
 def check_is_hand_open(hand_landmarks):
 	# Get reference points coords
 	landmarks = [(lm.x, lm.y) for lm in hand_landmarks.landmark]
@@ -72,22 +69,9 @@ def check_is_hand_open(hand_landmarks):
 	return average_distance > 0.1  # 0.05 is the closing reference value
 
 
-# Calculate a middle point between to points
-def calculate_middle_point(pt1, pt2):
-	x1, y1 = pt1
-	x2, y2 = pt2
-	x_diff = abs(x1 - x2)
-	y_diff = abs(y1 - y2)
-
-	new_x = int(x2 + x_diff/2) if x1 > x2 else int(x1 + x_diff/2)
-	new_y = int(y2 + y_diff/2) if y1 > y2 else int(y1 + y_diff/2)
-
-	return (new_x, new_y)
-	
-
 # Transform distance from hand to the center of the image into joystick data
-def linear_scaling(x, minA=-500, maxA=500, minB=0, maxB=255):
-	new_x = (x - minA) / (maxA - minA) * (maxB - minB) + minB
+def linear_scaling_joystick(x, minA=-500, maxA=500, minB=0, maxB=255):
+	new_x = linear_scaling(x, minA, maxA, minB, maxB)
 	
 	# Dont let data go off limits
 	if new_x > maxB:
@@ -175,8 +159,8 @@ def get_input_from_frame(frame, target_OS):
 			divider = 5
 
 			joystick_input = {
-				"x": int(linear_scaling(hand_center_coords[0] - frame_center_coords[0], -frame_w//divider, frame_w//divider, joystick_min, joystick_max)),
-				"y": int(linear_scaling(hand_center_coords[1] - frame_center_coords[1], -frame_h//divider, frame_h//divider, joystick_min, joystick_max))
+				"x": int(linear_scaling_joystick(hand_center_coords[0] - frame_center_coords[0], -frame_w//divider, frame_w//divider, joystick_min, joystick_max)),
+				"y": int(linear_scaling_joystick(hand_center_coords[1] - frame_center_coords[1], -frame_h//divider, frame_h//divider, joystick_min, joystick_max))
 			}
 
 
